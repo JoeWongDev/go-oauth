@@ -33,13 +33,26 @@ func main() {
 	http.HandleFunc("/", handleHome)
 	http.HandleFunc("/login", handleLogin)
 	http.HandleFunc("/callback", handleCallback)
+	http.HandleFunc("/logout", handleLogout)
 
 	fmt.Println("Server running on http://localhost:8080")
 	http.ListenAndServe(":8080", nil)
 }
 
 func handleHome(w http.ResponseWriter, r *http.Request) {
-	var html = `<html><body><a href="/login">Google Login</a></body></html>`
+	// read cookie
+	cookie, err := r.Cookie("session_token")
+
+	html := `<html><body><a href="/login">Google Login</a></body></html>`
+
+	if err == nil {
+		html = fmt.Sprintf(`<html><body>
+		<h1>Welcome, %s!</h1>
+		<a href="/logout">Logout</a>
+		</body></html>`, cookie.Value)
+	}
+
+	w.Header().Set("Content-Type", "text/html; charset=utf-8")
 	fmt.Fprint(w, html)
 }
 
@@ -81,5 +94,26 @@ func handleCallback(w http.ResponseWriter, r *http.Request) {
 
 	// output user info
 	data, _ := io.ReadAll(resp.Body)
+
+	cookie := &http.Cookie{
+		Name:  "session_token",
+		Value: "User_Logged_In",
+		Path:  "/",
+	}
+	http.SetCookie(w, cookie)
+
+	http.Redirect(w, r, "/", http.StatusTemporaryRedirect)
+
 	fmt.Fprintf(w, "UserInfo: %s\n", data)
+}
+
+func handleLogout(w http.ResponseWriter, r *http.Request) {
+	cookie := &http.Cookie{
+		Name:   "session_token",
+		Value:  "",
+		Path:   "/",
+		MaxAge: -1,
+	}
+	http.SetCookie(w, cookie)
+	http.Redirect(w, r, "/", http.StatusTemporaryRedirect)
 }
