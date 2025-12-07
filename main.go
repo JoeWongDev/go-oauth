@@ -2,6 +2,7 @@ package main
 
 import (
 	"fmt"
+	"io"
 	"log"
 	"net/http"
 	"os"
@@ -67,6 +68,18 @@ func handleCallback(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// output success msg
-	fmt.Fprintf(w, "Login Successful!\nToken: %s\n", token.AccessToken)
+	// create client that use the token automatically
+	client := googleOauthConfig.Client(r.Context(), token)
+
+	// make the request for user info
+	resp, err := client.Get("https://www.googleapis.com/oauth2/v2/userinfo")
+	if err != nil {
+		http.Error(w, "Failed to get user info", http.StatusBadRequest)
+		return
+	}
+	defer resp.Body.Close()
+
+	// output user info
+	data, _ := io.ReadAll(resp.Body)
+	fmt.Fprintf(w, "UserInfo: %s\n", data)
 }
