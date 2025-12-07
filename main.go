@@ -31,6 +31,7 @@ func main() {
 	// Basic endpoint
 	http.HandleFunc("/", handleHome)
 	http.HandleFunc("/login", handleLogin)
+	http.HandleFunc("/callback", handleCallback)
 
 	fmt.Println("Server running on http://localhost:8080")
 	http.ListenAndServe(":8080", nil)
@@ -45,4 +46,27 @@ func handleLogin(w http.ResponseWriter, r *http.Request) {
 	// state should be update as real random func, but set it as fixed string for testing
 	url := googleOauthConfig.AuthCodeURL("random")
 	http.Redirect(w, r, url, http.StatusTemporaryRedirect)
+}
+
+func handleCallback(w http.ResponseWriter, r *http.Request) {
+	// check the state
+	if r.FormValue("state") != "random" {
+		fmt.Println("State is not valid")
+		http.Redirect(w, r, "/", http.StatusTemporaryRedirect)
+		return
+	}
+
+	// get the code from URL
+	code := r.FormValue("code")
+
+	// use the code to exchange token
+	token, err := googleOauthConfig.Exchange(r.Context(), code)
+	if err != nil {
+		fmt.Printf("Could not get token: %s\n", err.Error())
+		http.Redirect(w, r, "/", http.StatusTemporaryRedirect)
+		return
+	}
+
+	// output success msg
+	fmt.Fprintf(w, "Login Successful!\nToken: %s\n", token.AccessToken)
 }
